@@ -4,20 +4,22 @@ import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,13 +39,29 @@ public class PhotoActivity extends AppCompatActivity {
     private ImageView imageView;
     private TextView textView;
 
+    private Bitmap bitmapTmp;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_photo);
 
+        bitmapTmp = null;
+
         imageView = (ImageView) findViewById(R.id.imageView);
         textView = (TextView) findViewById(R.id.textView);
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+
+        // Checks the orientation of the screen
+        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            imageView.setImageBitmap(bitmapTmp);
+        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
+            imageView.setImageBitmap(bitmapTmp);
+        }
     }
 
     private File createImageFile() throws IOException {
@@ -77,10 +95,10 @@ public class PhotoActivity extends AppCompatActivity {
             }
             // Continue only if the File was successfully created
             if (photoFile != null) {
-                Uri photoURI = FileProvider.getUriForFile(this,
+                Uri photoUri = FileProvider.getUriForFile(this,
                         "pl.archeron.opencv_android_lpr.fileprovider",
                         photoFile);
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
 
                 if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.LOLLIPOP) {
                     takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -89,7 +107,7 @@ public class PhotoActivity extends AppCompatActivity {
                 }
                 else if (Build.VERSION.SDK_INT>= Build.VERSION_CODES.JELLY_BEAN) {
                     ClipData clip=
-                            ClipData.newUri(getContentResolver(), "A photo", photoURI);
+                            ClipData.newUri(getContentResolver(), "A photo", photoUri);
 
                     takePictureIntent.setClipData(clip);
                     takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
@@ -103,7 +121,7 @@ public class PhotoActivity extends AppCompatActivity {
 
                     for (ResolveInfo resolveInfo : resInfoList) {
                         String packageName = resolveInfo.activityInfo.packageName;
-                        grantUriPermission(packageName, photoURI,
+                        grantUriPermission(packageName, photoUri,
                                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                     }
 
@@ -113,24 +131,47 @@ public class PhotoActivity extends AppCompatActivity {
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
             }
         }
-
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            try {
+                ExifInterface exif = new ExifInterface(mCurrentPhotoPath);
+                int rotationCode = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
 
-            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-            bmOptions.inJustDecodeBounds = false;
-            Bitmap bitmap = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
+                int rotationDegrees = 0;
+                if (rotationCode == ExifInterface.ORIENTATION_ROTATE_90) { rotationDegrees = 90; }
+                else if (rotationCode == ExifInterface.ORIENTATION_ROTATE_180) {  rotationDegrees = 180; }
+                else if (rotationCode == ExifInterface.ORIENTATION_ROTATE_270) {  rotationDegrees = 270; }
 
-            LicensePlateProcessor lpr = new LicensePlateProcessor(bitmap);
-            lpr.preprocess();
+                Matrix matrix = new Matrix();
+                if (rotationDegrees != 0) {matrix.preRotate(rotationDegrees);}
 
-            Bitmap tmp = lpr.getGrayscale();
-            imageView.setImageBitmap(tmp);
-            textView.setText(String.format("Width: %d Height: %d", tmp.getWidth(), tmp.getHeight()));
-            Toast.makeText(getApplicationContext(), "SUCCESS" ,Toast.LENGTH_SHORT);
+                BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+                bmOptions.inJustDecodeBounds = false;
+
+                Bitmap bitmapTmp = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
+                Bitmap bitmap = Bitmap.createBitmap(
+                        bitmapTmp,
+                        0,
+                        0,
+                        bitmapTmp.getWidth(),
+                        bitmapTmp.getHeight(),
+                        matrix,
+                        true);
+
+                LicensePlateProcessor lpr = new LicensePlateProcessor(bitmap);
+                bitmap.recycle();
+                bitmapTmp.recycle();
+                lpr.preprocess();
+
+                bitmapTmp = lpr.getGrayscale();
+                imageView.setImageBitmap(bitmapTmp);
+                textView.setText(String.format("Width: %d Height: %d", bitmapTmp.getWidth(), bitmapTmp.getHeight()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 }
