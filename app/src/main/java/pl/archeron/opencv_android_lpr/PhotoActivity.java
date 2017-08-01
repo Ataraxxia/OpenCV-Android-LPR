@@ -4,11 +4,8 @@ import android.content.ClipData;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
-import android.media.ExifInterface;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,40 +24,43 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
-import pl.archeron.opencv_android_lpr.utils.LicensePlateProcessor;
+import pl.archeron.opencv_android_lpr.utils.LicensePlateProcessorAsync;
+import pl.archeron.opencv_android_lpr.utils.LicensePlateProcessorCallback;
+import pl.archeron.opencv_android_lpr.utils.LicensePlateProcessorParameters;
 
-public class PhotoActivity extends AppCompatActivity {
+public class PhotoActivity extends AppCompatActivity implements LicensePlateProcessorCallback {
 
     private static final String TAG = "PhotoActivity";
     private String mCurrentPhotoPath;
 
-    static final int REQUEST_IMAGE_CAPTURE = 1;
+    static final int REQUEST_IMAGE_CAPTURE = 1;;
 
     private ImageView imageView;
     private TextView textView;
-
-    private Bitmap bitmapTmp;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_photo);
 
-        bitmapTmp = null;
-
         imageView = (ImageView) findViewById(R.id.imageView);
         textView = (TextView) findViewById(R.id.textView);
+
+        if(savedInstanceState != null) {
+            Bitmap bitmap = savedInstanceState.getParcelable("image");
+            imageView.setImageBitmap(bitmap);
+            imageView.setVisibility(ImageView.VISIBLE);
+        }
     }
 
     @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-
-        // Checks the orientation of the screen
-        if (newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE) {
-            imageView.setImageBitmap(bitmapTmp);
-        } else if (newConfig.orientation == Configuration.ORIENTATION_PORTRAIT){
-            imageView.setImageBitmap(bitmapTmp);
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if(imageView.getVisibility() == ImageView.VISIBLE) {
+            BitmapDrawable drawable = (BitmapDrawable) imageView.getDrawable();
+            Bitmap bitmap = drawable.getBitmap();
+            outState.putParcelable("image", bitmap);
+            super.onSaveInstanceState(outState);
         }
     }
 
@@ -77,6 +77,8 @@ public class PhotoActivity extends AppCompatActivity {
 
         // Save a file: path for use with ACTION_VIEW intents
         mCurrentPhotoPath = image.getAbsolutePath();
+        Log.i(TAG, mCurrentPhotoPath);
+
         return image;
     }
 
@@ -133,45 +135,40 @@ public class PhotoActivity extends AppCompatActivity {
         }
     }
 
+    public void debugTestLpr(View v) {
+        String p = "/storage/emulated/0/Android/data/pl.archeron.opencv_android_lpr/files/Pictures/JPEG_20170801_154302_-1815402575.jpg";
+
+        LicensePlateProcessorParameters lprParameters = new LicensePlateProcessorParameters();
+        lprParameters.setPath(p);
+        lprParameters.setPreviewMode(LicensePlateProcessorAsync.PREVIEW_BINARY);
+        lprParameters.setResizeRatio(0.25f);
+
+        LicensePlateProcessorAsync lprA = new LicensePlateProcessorAsync(this);
+        lprA.execute(lprParameters);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            try {
-                ExifInterface exif = new ExifInterface(mCurrentPhotoPath);
-                int rotationCode = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            LicensePlateProcessorParameters lprParameters = new LicensePlateProcessorParameters();
+            lprParameters.setPath(mCurrentPhotoPath);
+            lprParameters.setPreviewMode(LicensePlateProcessorAsync.PREVIEW_BINARY);
+            lprParameters.setResizeRatio(0.25f);
 
-                int rotationDegrees = 0;
-                if (rotationCode == ExifInterface.ORIENTATION_ROTATE_90) { rotationDegrees = 90; }
-                else if (rotationCode == ExifInterface.ORIENTATION_ROTATE_180) {  rotationDegrees = 180; }
-                else if (rotationCode == ExifInterface.ORIENTATION_ROTATE_270) {  rotationDegrees = 270; }
-
-                Matrix matrix = new Matrix();
-                if (rotationDegrees != 0) {matrix.preRotate(rotationDegrees);}
-
-                BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-                bmOptions.inJustDecodeBounds = false;
-
-                Bitmap bitmapTmp = BitmapFactory.decodeFile(mCurrentPhotoPath, bmOptions);
-                Bitmap bitmap = Bitmap.createBitmap(
-                        bitmapTmp,
-                        0,
-                        0,
-                        bitmapTmp.getWidth(),
-                        bitmapTmp.getHeight(),
-                        matrix,
-                        true);
-
-                LicensePlateProcessor lpr = new LicensePlateProcessor(bitmap);
-                bitmap.recycle();
-                bitmapTmp.recycle();
-                lpr.preprocess();
-
-                bitmapTmp = lpr.getGrayscale();
-                imageView.setImageBitmap(bitmapTmp);
-                textView.setText(String.format("Width: %d Height: %d", bitmapTmp.getWidth(), bitmapTmp.getHeight()));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            lprParameters.setPreviewMode(LicensePlateProcessorAsync.PREVIEW_BINARY);
+            LicensePlateProcessorAsync lprA = new LicensePlateProcessorAsync(this); //TODO parametrize scaling
+            lprA.execute(lprParameters);
         }
+    }
+
+    @Override
+    public void onTaskCompleted(Object result) {
+        imageView.setImageBitmap((Bitmap)result);
+        imageView.setVisibility(ImageView.VISIBLE);
+    }
+
+    @Override
+    public void onTaskUpdated(String update) {
+        textView.setText(update);
     }
 }
