@@ -10,6 +10,7 @@ import android.util.Log;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.Rect;
@@ -17,6 +18,8 @@ import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorParameters, String, Object> {
     private static final String TAG = "LPRWorker";
@@ -35,9 +38,9 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         int iMedianBlurKernelSize = param.getMedianBlurKernelSize(); //Must be odd accordng to opencv documentation
         int iLineLength = param.getLineLength();
 
-        Mat mImage = null;
-
+        //region Loading image file
         publishProgress("Loading file");
+        Mat mImage = null;
         try {
             ExifInterface exif = new ExifInterface(path);
             int rotationCode = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
@@ -69,6 +72,7 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         } catch (IOException e) {
             e.printStackTrace();
         }
+        //endregion
 
         Imgproc.resize(mImage, mImage, new Size(), fResizeRatio, fResizeRatio, Imgproc.INTER_LANCZOS4);
 
@@ -99,15 +103,10 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         Mat mBinary = new Mat();
         Imgproc.threshold(mEdges, mBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU); // THRESH_BINARY | THRESH_OTSU
 
-        publishProgress("Morphological transformations"); //Might cause problems, subject to remove?
-        Mat mDeNoised = new MatOfByte();
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(11,11));
-        Imgproc.morphologyEx(mBinary, mDeNoised, Imgproc.MORPH_CLOSE, kernel);
-
         publishProgress("Generating integral image");
         Mat mIntegralImage = new Mat();
         int[][] iIntegralAccumulator = new int[mBinary.height()][mBinary.width()];
-        Imgproc.integral(mDeNoised, mIntegralImage);
+        Imgproc.integral(mBinary, mIntegralImage);
 
         int[] integralImage = new int[mIntegralImage.width()*mIntegralImage.height()];
         mIntegralImage.get(0,0, integralImage);
@@ -149,8 +148,69 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         Mat mPlateBinary = new Mat();
         Imgproc.threshold(mIntegralMax, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 
+        Mat mPlateBinaryClosed = new MatOfByte();
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5,5));
+        Imgproc.morphologyEx(mPlateBinary, mPlateBinaryClosed, Imgproc.MORPH_CLOSE, kernel);
 
+        //region Empty columns and rows removal
+        List<Integer> emptyColumnsList = new ArrayList<Integer>();
+        List<Integer> emptyRowsList = new ArrayList<Integer>();
 
+        float emptyRowThreshold = 0.60f;
+        float emptyColumnThreshold = 0.60f;
+
+        byte plateBinary[] = new byte[mPlateBinary.width() * mPlateBinary.height()];
+        mPlateBinaryClosed.get(0,0,plateBinary);
+
+        int plateBinaryWidth = mPlateBinary.width();
+        int plateBinaryHeight = mPlateBinary.height();
+        int zeroPixCounter = 0;
+        for(int x = 0; x < plateBinaryWidth; x++) {
+            for(int y = 0; y < plateBinaryHeight; y++) {
+                byte pix = plateBinary[y * plateBinaryWidth + x];
+                if (pix == 0)
+                    zeroPixCounter++;
+            }
+            if(zeroPixCounter >= plateBinaryHeight*emptyColumnThreshold) { //if more than 95% of pixels are empty, add column to removal list
+                emptyColumnsList.add(x);
+            }
+            zeroPixCounter = 0;
+        }
+
+        zeroPixCounter = 0;
+        for(int y = 0; y < plateBinaryHeight; y++) {
+            for(int x = 0; x < plateBinaryWidth; x++) {
+                byte pix = plateBinary[y * plateBinaryWidth + x];
+                if(pix == 0)
+                    zeroPixCounter++;
+            }
+            if(zeroPixCounter >= plateBinaryWidth*emptyRowThreshold) {
+                emptyRowsList.add(y);
+            }
+            zeroPixCounter = 0;
+        }
+
+        Mat mPlateBinaryWithoutZeros1 = new Mat(rectHeight, rectWidth - emptyColumnsList.size(), CvType.CV_8U);
+        Mat mPlateBinaryWithoutZeros2 = new Mat(rectHeight - emptyRowsList.size(), rectWidth - emptyColumnsList.size(), CvType.CV_8U);
+        int hit = 0;
+        for(int i = 0; i < plateBinaryWidth; i++) {
+            if(!emptyColumnsList.contains(i)) {
+                mPlateBinary.col(i).copyTo(mPlateBinaryWithoutZeros1.col(i - hit));
+            } else {
+                hit++;
+            }
+        }
+
+        hit = 0;
+        for(int i = 0; i < plateBinaryHeight; i++) {
+            if(!emptyRowsList.contains(i)) {
+                mPlateBinaryWithoutZeros1.row(i).copyTo(mPlateBinaryWithoutZeros2.row(i - hit));
+            } else {
+                hit++;
+            }
+        }
+        //endregion
+        
         publishProgress("Done, generating image");
         Mat mat;
         switch (previewMode) {
@@ -174,23 +234,18 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
                 mat = mBinary;
                 break;
 
-            case PREVIEW_DENOISED:
-                mat = mDeNoised;
-                break;
-
             case PREVIEW_INTEGRAL:
                 mat = mIntegralMax;
                 break;
 
             case PREVIEW_FINAL:
-                mat = mPlateBinary;
+                mat = mPlateBinaryWithoutZeros2;
                 break;
 
             default:
                 mat = mImage;
         }
 
-        Log.i(TAG, "Size: " +  Integer.toString(mat.cols()) + "x" + Integer.toString(mat.rows()));
         Bitmap bmp = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bmp);
         return bmp;

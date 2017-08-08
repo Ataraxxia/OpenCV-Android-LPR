@@ -3,21 +3,120 @@
 
     <item
         is-multidex="false"
+        jar="/home/tai/.android/build-cache/57c33c651436ce44f5859f9f3cf6814d39f0995d/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="952944218ecedea1554a513dec0c14d570642843">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_ecf05aea78bcec133052525f7a04e490e59473ac.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/f47d7f756a810368db042af1eeef5545e760a3f7/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="2e92aa0163544a804a0b34f169ca61801770839a">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_8451f4b27bd7a06f99acca17103769be8118b2ca.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/StudioProjects/OpenCV-Android-LPR/openCVLibrary320/build/intermediates/bundles/default/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="fc7901452f01f1635718372a2caec5e62b00846e">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_c48462ba3effcce7cad2eb0f12bd7d9cb86c474e.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/a14d1b67645e26c0be79218248e24b3bb1c1a5e1/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="18d31838aa4fcc768a8a0516e22cc13b94655d89">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_781cb7231028df1262d0e60f5e3abdd5ae9d282f.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/fcbdb6a2d93c1b0986e3e7c4a0ed34f1073f72c7/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="8df0e365e40beb151bc42dee20817721a6cab7b0">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_1a0913785a1b1d307014c0c2d48f35dee0173313.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/63b161da51cef8527fd4b658b529d6d7f04acd57/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="fcd01fd11233459f546c437ec927e9b61bf7caf1">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_cd9480b01edd60d292b708eea5eb0a0a9c721e17.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/948d6c8eed703beac992ed2a95ed43d05bd77399/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="88246166d5afb106f532f6e6deae683c66b42c89">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_0bae068998279a65f23b6b7d27378e1d13cabf6c.jar" />
+    </item>
+    <item
+        is-multidex="false"
         jar="/home/tai/Android/Sdk/extras/android/m2repository/com/android/support/support-annotations/26.0.0-alpha1/support-annotations-26.0.0-alpha1.jar"
         jumboMode="false"
         optimize="true"
         revision="26.0.0"
         sha1="023ee503b631f69511e335a061ea008f8da60f40">
-        <dex dex="/home/tai/AndroidStudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/support-annotations-26.0.0-alpha1_6841fbbef93416137cfce7a2e1596b277ac5f323.jar" />
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/support-annotations-26.0.0-alpha1_6841fbbef93416137cfce7a2e1596b277ac5f323.jar" />
     </item>
     <item
         is-multidex="false"
-        jar="/home/tai/AndroidStudioProjects/OpenCV-Android-LPR/openCVLibrary320/build/intermediates/bundles/default/classes.jar"
+        jar="/home/tai/.android/build-cache/d684d7201d46ba482b2e0eaaa81a46b73f5c9883/output/jars/classes.jar"
         jumboMode="false"
         optimize="true"
         revision="26.0.0"
-        sha1="989310447fb96a57f5702d24571c52d199b3a3c4">
-        <dex dex="/home/tai/AndroidStudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_60d1908b9f1e925d21742526eedcc381605dbedc.jar" />
+        sha1="d7c42c80f6509b9ea4db28ca7859ffae08ec5741">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_83d947da94bf1d8e9023277cd451695ee2eddeda.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/Android/Sdk/extras/m2repository/com/android/support/constraint/constraint-layout-solver/1.0.2/constraint-layout-solver-1.0.2.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="b9cd8fc6bd15cb915735d34535db30ece0c44603">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/constraint-layout-solver-1.0.2_757d62bc7cdd8af67735df2c6f27e47e93b6e519.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/dc3e7b019c29348fbcc10ebdc3b4b06f17c4c4aa/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="9935891f23923f39d002087085d9696568a9f657">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_e42d888136291e32c83fadee4ccf0c16e73a7b42.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/b3f11b1d897ebfbd7fed361ca721343f966138ce/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="47471eb19df288158b00b8d9cfa41bce7373f5cc">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_9d8c1ee96db43d6d7cda83476f0f285169c07b6c.jar" />
+    </item>
+    <item
+        is-multidex="false"
+        jar="/home/tai/.android/build-cache/c87082b05cb96d529005bc1e832c267d954f6570/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="44ee06abb66da30f5855e6bf54574e64cdcd982a">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_2d0b705b0576a5fea71eb7f884ad172be40d6430.jar" />
     </item>
 
 </items>

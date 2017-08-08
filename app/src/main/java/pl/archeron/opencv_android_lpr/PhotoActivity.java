@@ -148,7 +148,7 @@ public class PhotoActivity extends AppCompatActivity implements LicensePlateProc
     }
 
     public void onButtonDebugClick(View v) {
-        String p = "/storage/emulated/0/Android/data/pl.archeron.opencv_android_lpr/files/Pictures/JPEG_20170801_154302_-1815402575.jpg";
+        String p = "/storage/emulated/0/Android/data/pl.archeron.opencv_android_lpr/files/Pictures/v1.jpg";
         lprParameters.setPath(p);
         lprParameters.setResizeRatio(0.25f);
 

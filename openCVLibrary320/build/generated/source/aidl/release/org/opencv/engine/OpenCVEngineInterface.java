@@ -1,6 +1,6 @@
 /*
  * This file is auto-generated.  DO NOT MODIFY.
- * Original file: /home/tai/AndroidStudioProjects/OpenCV-Android-LPR/openCVLibrary320/src/main/aidl/org/opencv/engine/OpenCVEngineInterface.aidl
+ * Original file: /home/tai/StudioProjects/OpenCV-Android-LPR/openCVLibrary320/src/main/aidl/org/opencv/engine/OpenCVEngineInterface.aidl
  */
 package org.opencv.engine;
 /**
