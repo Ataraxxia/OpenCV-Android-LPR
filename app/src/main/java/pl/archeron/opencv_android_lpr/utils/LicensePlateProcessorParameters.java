@@ -1,20 +1,19 @@
 package pl.archeron.opencv_android_lpr.utils;
 
-
 public class LicensePlateProcessorParameters {
 
     private String sPath;
     private float fResizeRatio;
-    private int iPreviewMode;
     private int iMedianBlurKernelSize;
     private int iLineLength;
 
+    private PreviewMode previewMode;
+
     public LicensePlateProcessorParameters() {
-        sPath = "";
         fResizeRatio = 1.0f;
-        iPreviewMode = LicensePlateProcessorAsync.PREVIEW_NONE;
+        previewMode = PreviewMode.PREVIEW_FINAL;
         iMedianBlurKernelSize = 3;
-        iLineLength = 7;
+        iLineLength = 9;
     }
 
     public void setPath(String path) {
@@ -33,12 +32,16 @@ public class LicensePlateProcessorParameters {
         return fResizeRatio;
     }
 
-    public void setPreviewMode(int previewMode) {
-        iPreviewMode = previewMode;
+    public void setPreviewMode(PreviewMode previewMode) {
+        previewMode = previewMode;
     }
 
-    public int getPreviewMode() {
-        return iPreviewMode;
+    public void setPreviewMode(String sPreviewMode) {
+        previewMode = PreviewMode.valueOf(sPreviewMode);
+    }
+
+    public PreviewMode getPreviewMode() {
+        return previewMode;
     }
 
     public void setMedianBlurKernelSize(int i) { //Todo kernel size must be odd
@@ -56,4 +59,5 @@ public class LicensePlateProcessorParameters {
     public int getLineLength() {
         return iLineLength;
     }
+
 }

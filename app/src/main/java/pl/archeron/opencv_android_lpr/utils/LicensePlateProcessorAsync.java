@@ -6,27 +6,20 @@ import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.os.AsyncTask;
+import android.util.Log;
 
 import org.opencv.android.Utils;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
-import org.opencv.core.MatOfPoint;
-import org.opencv.core.Scalar;
+import org.opencv.core.MatOfByte;
+import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorParameters, String, Object> {
-    public static final int PREVIEW_NONE = 0;
-    public static final int PREVIEW_GRAYSCALE = 1;
-    public static final int PREVIEW_BLURRED = 2;
-    public static final int PREVIEW_EQ_HISTOGRAM = 3;
-    public static final int PREVIEW_EDGES = 4;
-    public static final int PREVIEW_BINARY = 5;
-    public static final int PREVIEW_CONTOURS = 6;
+    private static final String TAG = "LPRWorker";
 
     private LicensePlateProcessorCallback listener;
 
@@ -38,17 +31,11 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         LicensePlateProcessorParameters param = params[0];
         String path = param.getPath();
         float fResizeRatio = param.getResizeRatio();
-        int iPreview = param.getPreviewMode();
+        PreviewMode previewMode = param.getPreviewMode();
         int iMedianBlurKernelSize = param.getMedianBlurKernelSize(); //Must be odd accordng to opencv documentation
         int iLineLength = param.getLineLength();
 
         Mat mImage = null;
-        Mat mGrayscale;
-        Mat mBlurred;
-        Mat mEqualizedHistogram;
-        Mat mEdges;
-        Mat mBinary;
-        Mat mContours;
 
         publishProgress("Loading file");
         try {
@@ -86,44 +73,87 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         Imgproc.resize(mImage, mImage, new Size(), fResizeRatio, fResizeRatio, Imgproc.INTER_LANCZOS4);
 
         publishProgress("Converting to grayscale");
-        mGrayscale = new Mat();
+        Mat mGrayscale = new Mat();
         Imgproc.cvtColor(mImage, mGrayscale, Imgproc.COLOR_RGB2GRAY);
 
         publishProgress("Applying blur");
-        mBlurred = new Mat();
+        Mat mBlurred = new Mat();
         Imgproc.medianBlur(mGrayscale, mBlurred, iMedianBlurKernelSize); //may need to be done twice or none on small resolutions
         Imgproc.medianBlur(mBlurred, mBlurred, iMedianBlurKernelSize);
 
-        publishProgress("Equalizing histogram");
-        mEqualizedHistogram = new Mat();
-        Imgproc.equalizeHist(mBlurred, mEqualizedHistogram);
+        //publishProgress("Equalizing histogram");
+        //Mat mEqualizedHistogram = new Mat();
+        //Imgproc.equalizeHist(mBlurred, mEqualizedHistogram);
 
         publishProgress("Extracting edges");
+        Mat mEdges = new Mat();
         Mat mD = new Mat();
         Mat mE = new Mat();
-        mEdges = new Mat();
         Mat straightLineHorizontal = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(1,iLineLength));
         Mat straightLineVertical = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(iLineLength, 1));
-        Imgproc.dilate(mEqualizedHistogram, mD, straightLineHorizontal);
-        Imgproc.erode(mEqualizedHistogram, mE, straightLineVertical);
+        Imgproc.dilate(mBlurred, mD, straightLineHorizontal);
+        Imgproc.erode(mBlurred, mE, straightLineVertical);
         Core.subtract(mD, mE, mEdges);
 
         publishProgress("Converting to binary image");
-        mBinary = new Mat();
+        Mat mBinary = new Mat();
         Imgproc.threshold(mEdges, mBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU); // THRESH_BINARY | THRESH_OTSU
 
-        publishProgress("Detecting contours");
-        mContours = mBinary.clone();
-        List<MatOfPoint> contours = new ArrayList<MatOfPoint>();
-        Mat hierarchy = new Mat();
-        Imgproc.findContours(mBinary, contours, hierarchy, Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE);
-        for (int contourIdx = 0; contourIdx < contours.size(); contourIdx++) {
-            Imgproc.drawContours(mContours, contours, contourIdx, new Scalar(0, 0, 255), -1);
+        publishProgress("Morphological transformations"); //Might cause problems, subject to remove?
+        Mat mDeNoised = new MatOfByte();
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(11,11));
+        Imgproc.morphologyEx(mBinary, mDeNoised, Imgproc.MORPH_CLOSE, kernel);
+
+        publishProgress("Generating integral image");
+        Mat mIntegralImage = new Mat();
+        int[][] iIntegralAccumulator = new int[mBinary.height()][mBinary.width()];
+        Imgproc.integral(mDeNoised, mIntegralImage);
+
+        int[] integralImage = new int[mIntegralImage.width()*mIntegralImage.height()];
+        mIntegralImage.get(0,0, integralImage);
+
+        float aspectRatio = 4.666667f; //TODO add scaling? If it won't kill performance?
+        int rectWidth = 200;
+        int rectHeight = (int) (rectWidth / aspectRatio);
+
+        Mat mIntegralMax = null;
+        int iIntegralAccumulatorMaxValue = 0; //TODO private class decribing maxval, with fields as val, 2dpoint
+        int iIntegralAccumulatorMaxValueX = 0;
+        int iIntegralAccumulatorMaxValueY = 0;
+
+        for (int i = 0; i<mIntegralImage.height() - rectHeight; i++)
+            for (int j = 0; j < mIntegralImage.width() - rectWidth; j++)
+                if(mIntegralImage.get(i,j)[0] > 0) {
+                    iIntegralAccumulator[i][j] =
+                            integralImage[(i+rectHeight)*mIntegralImage.width() + (j + rectWidth)] -
+                            integralImage[(i+rectHeight)*mIntegralImage.width() + j] -
+                            integralImage[i*mIntegralImage.width() + (j + rectWidth)] +
+                            integralImage[i*mIntegralImage.width() + j];
+
+                    if(iIntegralAccumulator[i][j] > iIntegralAccumulatorMaxValue) {
+                        iIntegralAccumulatorMaxValue = iIntegralAccumulator[i][j];
+                        iIntegralAccumulatorMaxValueX = j;
+                        iIntegralAccumulatorMaxValueY = i;
+                    }
+                }
+
+        publishProgress("FoundMaximum");
+        try {
+            Rect area = new Rect(iIntegralAccumulatorMaxValueY, iIntegralAccumulatorMaxValueX, rectWidth, rectHeight);
+            mIntegralMax = new Mat(mGrayscale, area);
         }
+        catch(Exception e) {
+            Log.e(TAG, e.getMessage());
+        }
+
+        Mat mPlateBinary = new Mat();
+        Imgproc.threshold(mIntegralMax, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+
+
 
         publishProgress("Done, generating image");
         Mat mat;
-        switch (iPreview) {
+        switch (previewMode) {
             case PREVIEW_NONE:
                 mat = mImage;
                 break;
@@ -136,10 +166,6 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
                 mat = mBlurred;
                 break;
 
-            case PREVIEW_EQ_HISTOGRAM:
-                mat = mEqualizedHistogram;
-                break;
-
             case PREVIEW_EDGES:
                 mat = mEdges;
                 break;
@@ -148,14 +174,23 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
                 mat = mBinary;
                 break;
 
-            case PREVIEW_CONTOURS:
-                mat = mContours;
+            case PREVIEW_DENOISED:
+                mat = mDeNoised;
+                break;
+
+            case PREVIEW_INTEGRAL:
+                mat = mIntegralMax;
+                break;
+
+            case PREVIEW_FINAL:
+                mat = mPlateBinary;
                 break;
 
             default:
-                mat = null;
+                mat = mImage;
         }
 
+        Log.i(TAG, "Size: " +  Integer.toString(mat.cols()) + "x" + Integer.toString(mat.rows()));
         Bitmap bmp = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bmp);
         return bmp;
@@ -163,7 +198,6 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
 
     protected void onProgressUpdate(String... progress) {
         listener.onTaskUpdated(progress[0]);
-
     }
 
     protected void onPostExecute(Object result) {
