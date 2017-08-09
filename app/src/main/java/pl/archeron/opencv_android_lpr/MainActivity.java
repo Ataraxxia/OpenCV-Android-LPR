@@ -32,4 +32,9 @@ public class MainActivity extends AppCompatActivity {
         myIntent = new Intent(this, PhotoActivity.class);
         startActivity(myIntent);
     }
+
+    public void startPhotoRoiActivity(View v) {
+        myIntent = new Intent(this, PhotoRoiActivity.class);
+        startActivity(myIntent);
+    }
 }

@@ -210,7 +210,7 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
             }
         }
         //endregion
-        
+
         publishProgress("Done, generating image");
         Mat mat;
         switch (previewMode) {
