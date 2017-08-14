@@ -9,7 +9,6 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import org.opencv.android.Utils;
-import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
@@ -18,6 +17,7 @@ import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -33,52 +33,16 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
 
     protected String doInBackground(LicensePlateProcessorParameters... params) {
         LicensePlateProcessorParameters param = params[0];
-        String mPath = param.getPath();
-        Point mAnchor = param.getAnchor();
-        Point mRectangleSize = param.getRectangleSize();
-        Rect rect = new Rect(mAnchor, mRectangleSize);
-
-        //region Loading image file
-        publishProgress("Loading file");
-        Mat mImage = null;
-        try {
-            ExifInterface exif = new ExifInterface(mPath);
-            int rotationCode = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
-
-            int rotationDegrees = 0;
-            if (rotationCode == ExifInterface.ORIENTATION_ROTATE_90) { rotationDegrees = 90; }
-            else if (rotationCode == ExifInterface.ORIENTATION_ROTATE_180) {  rotationDegrees = 180; }
-            else if (rotationCode == ExifInterface.ORIENTATION_ROTATE_270) {  rotationDegrees = 270; }
-
-            Matrix matrix = new Matrix();
-            if (rotationDegrees != 0) {matrix.preRotate(rotationDegrees);}
-
-            BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-            bmOptions.inJustDecodeBounds = false;
-
-            Bitmap bitmapTmp = BitmapFactory.decodeFile(mPath, bmOptions);
-            Bitmap bitmap = Bitmap.createBitmap(
-                    bitmapTmp,
-                    0,
-                    0,
-                    bitmapTmp.getWidth(),
-                    bitmapTmp.getHeight(),
-                    matrix,
-                    true);
-            mImage = new Mat();
-            Utils.bitmapToMat(bitmap, mImage);
-            mImage = new Mat(mImage, rect);
-            bitmap.recycle();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        //endregion
+        Mat mImage = param.getMat();
 
         Mat mGrayscale = new Mat();
         Imgproc.cvtColor(mImage, mGrayscale, Imgproc.COLOR_RGB2GRAY);
 
+        Mat mEqualizedHistogram = new Mat();
+        Imgproc.equalizeHist(mGrayscale, mEqualizedHistogram);
+
         Mat mPlateBinary = new Mat();
-        Imgproc.threshold(mGrayscale, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
+        Imgproc.threshold(mEqualizedHistogram, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY);
 
         Mat mPlateBinaryClosed = new MatOfByte();
         Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5,5));
@@ -123,8 +87,8 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
             zeroPixCounter = 0;
         }
 
-        Mat mPlateBinaryWithoutZeros1 = new Mat((int)mRectangleSize.y, (int)mRectangleSize.x - emptyColumnsList.size(), CvType.CV_8U);
-        Mat mPlateBinaryWithoutZeros2 = new Mat((int)mRectangleSize.y - emptyRowsList.size(), (int)mRectangleSize.x - emptyColumnsList.size(), CvType.CV_8U);
+        Mat mPlateBinaryWithoutZeros1 = new Mat(mImage.height(), mImage.width() - emptyColumnsList.size(), CvType.CV_8U);
+        Mat mPlateBinaryWithoutZeros2 = new Mat(mImage.height() - emptyRowsList.size(), mImage.width() - emptyColumnsList.size(), CvType.CV_8U);
         Log.i(TAG, "ROWS: " + Integer.toString(emptyRowsList.size()));
         Log.i(TAG, "COLS: " + Integer.toString(emptyColumnsList.size()));
 

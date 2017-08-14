@@ -12,12 +12,10 @@ import android.hardware.Camera.Size;
 import java.io.FileOutputStream;
 import java.util.List;
 
-public class MyJavaCameraView extends JavaCameraView implements Camera.PictureCallback {
+public class MyJavaCameraView extends JavaCameraView {
 
     private static final String TAG = "MyJavaCameraView";
     private String mPictureFileName;
-
-    private PhotoCallback listener;
 
     public MyJavaCameraView(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -47,38 +45,5 @@ public class MyJavaCameraView extends JavaCameraView implements Camera.PictureCa
 
     public Size getResolution() {
         return mCamera.getParameters().getPreviewSize();
-    }
-
-    public void takePicture(final String fileName, PhotoCallback listener) {
-        this.listener = listener;
-
-        Log.i(TAG, "Taking picture");
-        this.mPictureFileName = fileName;
-        // Postview and jpeg are sent in the same buffers if the queue is not empty when performing a capture.
-        // Clear up buffers to avoid mCamera.takePicture to be stuck because of a memory issue
-        mCamera.setPreviewCallback(null);
-
-        // PictureCallback is implemented by the current class
-        mCamera.takePicture(null, null, this);
-    }
-
-    @Override
-    public void onPictureTaken(byte[] data, Camera camera) {
-        Log.i(TAG, "Saving a bitmap to file");
-        // The camera preview was automatically stopped. Start it again.
-        mCamera.startPreview();
-        mCamera.setPreviewCallback(this);
-
-        // Write the image in a file (in jpeg format)
-        try {
-            FileOutputStream fos = new FileOutputStream(mPictureFileName);
-
-            fos.write(data);
-            fos.close();
-        } catch (java.io.IOException e) {
-            Log.e("PictureDemo", "Exception in photoCallback", e);
-        }
-
-        listener.onPhotoTaken();
     }
 }

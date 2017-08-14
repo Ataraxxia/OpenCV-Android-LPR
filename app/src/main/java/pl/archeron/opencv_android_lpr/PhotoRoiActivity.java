@@ -1,6 +1,5 @@
 package pl.archeron.opencv_android_lpr;
 
-import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,12 +15,10 @@ import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
+import org.opencv.core.Rect;
 import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -29,9 +26,8 @@ import pl.archeron.opencv_android_lpr.LPR.LicensePlateProcessorAsync;
 import pl.archeron.opencv_android_lpr.LPR.LicensePlateProcessorCallback;
 import pl.archeron.opencv_android_lpr.LPR.LicensePlateProcessorParameters;
 import pl.archeron.opencv_android_lpr.LPR.MyJavaCameraView;
-import pl.archeron.opencv_android_lpr.LPR.PhotoCallback;
 
-public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewListener2, LicensePlateProcessorCallback, PhotoCallback {
+public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewListener2, LicensePlateProcessorCallback {
     private static final String TAG = "PhotoRoiActivity";
 
     private MyJavaCameraView mOpenCvCameraView;
@@ -47,13 +43,15 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
     private MenuItem[] mFocusModeMenuItems;
     private SubMenu mFocusModeMenu;
 
-    private float mAspectRatio = 4.666667f;
+    private final float mAspectRatio = 4.666667f;
     private int mMinROIWidth = 140;
     private int mMaxROIWidth = 400;
 
     private Point mPreviewResolution;
 
     private String mCurrentPhotoPath;
+
+    private boolean imageCapture;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +62,8 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         mPreviewResolution = null;
+
+        imageCapture = false;
 
         mROISize = new Point(200, (int) (200 / mAspectRatio));
 
@@ -113,8 +113,18 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
         Mat frame = inputFrame.rgba();
-
         Imgproc.rectangle(frame, mROIAnchorPoint, new Point(mROIAnchorPoint.x + mROISize.x, mROIAnchorPoint.y + mROISize.y), new Scalar(255, 0, 0), 1);
+
+        if(imageCapture) {
+            Rect rect = new Rect(mROIAnchorPoint, new Point(mROISize.x, mROISize.y));
+            Mat licensePlate = new Mat(frame, rect);
+
+            LicensePlateProcessorParameters lprParameters = new LicensePlateProcessorParameters(licensePlate);
+            LicensePlateProcessorAsync lprA = new LicensePlateProcessorAsync(this);
+            lprA.execute(lprParameters);
+
+            imageCapture = false;
+        }
 
         return frame;
     }
@@ -178,35 +188,8 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         return true;
     }
 
-    @Override
-    public void onPhotoTaken() {
-        LicensePlateProcessorParameters lprParameters = new LicensePlateProcessorParameters(mCurrentPhotoPath, mROIAnchorPoint, mROISize);
-        LicensePlateProcessorAsync lprA = new LicensePlateProcessorAsync(this);
-        lprA.execute(lprParameters);
-    }
-
     public void onWorkButton(View v) {
-        try {
-            // Create an image file name
-            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-            String imageFileName = "JPEG_" + timeStamp + "_";
-            File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-            File image = File.createTempFile(
-                    imageFileName,  /* prefix */
-                    ".jpg",         /* suffix */
-                    storageDir      /* directory */
-            );
-
-            // Save a file: path for use with ACTION_VIEW intents
-            mCurrentPhotoPath = image.getAbsolutePath();
-
-            mOpenCvCameraView.takePicture(mCurrentPhotoPath, this);
-
-            Toast.makeText(this, "Picture taken", Toast.LENGTH_SHORT).show();
-        }
-        catch (Exception e) {
-
-        }
+        imageCapture = true;
     }
 
     public void onRectButton(View v) {
