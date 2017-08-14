@@ -6,8 +6,6 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
-import android.view.ScaleGestureDetector;
 import android.view.SubMenu;
 import android.view.SurfaceView;
 import android.view.View;
@@ -27,9 +25,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.ListIterator;
 
-import pl.archeron.opencv_android_lpr.utils.MyJavaCameraView;
+import pl.archeron.opencv_android_lpr.LPR.LicensePlateProcessorAsync;
+import pl.archeron.opencv_android_lpr.LPR.LicensePlateProcessorCallback;
+import pl.archeron.opencv_android_lpr.LPR.LicensePlateProcessorParameters;
+import pl.archeron.opencv_android_lpr.LPR.MyJavaCameraView;
+import pl.archeron.opencv_android_lpr.LPR.PhotoCallback;
 
-public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewListener2, View.OnTouchListener {
+public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewListener2, LicensePlateProcessorCallback, PhotoCallback {
     private static final String TAG = "PhotoRoiActivity";
 
     private MyJavaCameraView mOpenCvCameraView;
@@ -44,9 +46,6 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
     private List<String> mFocusModeList;
     private MenuItem[] mFocusModeMenuItems;
     private SubMenu mFocusModeMenu;
-
-    private ScaleGestureDetector mScaleDetector;
-    private float mScaleFactor = 0.25f;
 
     private float mAspectRatio = 4.666667f;
     private int mMinROIWidth = 140;
@@ -68,22 +67,17 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
 
         mROISize = new Point(200, (int) (200 / mAspectRatio));
 
-        mScaleDetector = new ScaleGestureDetector(this, new ScaleListener());
-
         mOpenCvCameraView = (MyJavaCameraView) findViewById(R.id.photo_roi_camera_view);
 
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
 
         mOpenCvCameraView.setCvCameraViewListener(this);
 
-        mOpenCvCameraView.setOnTouchListener(PhotoRoiActivity.this);
-
         mOpenCvCameraView.enableView();
     }
 
     @Override
-    public void onPause()
-    {
+    public void onPause() {
         super.onPause();
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
@@ -93,6 +87,16 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         super.onDestroy();
         if (mOpenCvCameraView != null)
             mOpenCvCameraView.disableView();
+    }
+
+    @Override
+    public void onTaskCompleted(String result) {
+        Toast.makeText(this, "LPR Done", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onTaskUpdated(String update) {
+
     }
 
     @Override
@@ -113,14 +117,6 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         Imgproc.rectangle(frame, mROIAnchorPoint, new Point(mROIAnchorPoint.x + mROISize.x, mROIAnchorPoint.y + mROISize.y), new Scalar(255, 0, 0), 1);
 
         return frame;
-    }
-
-    @Override
-    public boolean onTouch(View view, MotionEvent motionEvent) {
-        Log.i(TAG,"onTouch event");
-
-        mScaleDetector.onTouchEvent(motionEvent);
-        return true;
     }
 
     @Override
@@ -182,7 +178,14 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         return true;
     }
 
-    public void onTapTakePhoto(View v) {
+    @Override
+    public void onPhotoTaken() {
+        LicensePlateProcessorParameters lprParameters = new LicensePlateProcessorParameters(mCurrentPhotoPath, mROIAnchorPoint, mROISize);
+        LicensePlateProcessorAsync lprA = new LicensePlateProcessorAsync(this);
+        lprA.execute(lprParameters);
+    }
+
+    public void onWorkButton(View v) {
         try {
             // Create an image file name
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -197,7 +200,7 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
             // Save a file: path for use with ACTION_VIEW intents
             mCurrentPhotoPath = image.getAbsolutePath();
 
-            mOpenCvCameraView.takePicture(mCurrentPhotoPath);
+            mOpenCvCameraView.takePicture(mCurrentPhotoPath, this);
 
             Toast.makeText(this, "Picture taken", Toast.LENGTH_SHORT).show();
         }
@@ -206,31 +209,23 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         }
     }
 
-    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+    public void onRectButton(View v) {
+        float mScaleFactor = 1f;
 
-        @Override
-        public boolean onScaleBegin(ScaleGestureDetector detector) {
-            // TODO Auto-generated method stub
-            return true;
+        switch(v.getId()) {
+            case(R.id.rectPlusButton):
+                mScaleFactor = 1.05f;
+                break;
+
+            case(R.id.rectMinusButton):
+                mScaleFactor = 0.95f;
+                break;
         }
 
-        @Override
-        public boolean onScale(ScaleGestureDetector detector) {
-            Log.i(TAG, "Scale gesture detected");
+        int rectWidth = Math.max(mMinROIWidth, Math.min((int) (mROISize.x * mScaleFactor), mMaxROIWidth));
+        int rectHeight = (int) (rectWidth / mAspectRatio);
 
-            mScaleFactor *= detector.getScaleFactor();
-
-            // Don't let the object get too small or too large.
-            mScaleFactor = Math.max(0.95f, Math.min(mScaleFactor, 1.05f));
-
-            int rectWidth = Math.max(mMinROIWidth, Math.min((int) (mROISize.x * mScaleFactor), mMaxROIWidth));
-            int rectHeight = (int) (rectWidth / mAspectRatio);
-
-            mROISize = new Point( rectWidth, rectHeight);
-            mROIAnchorPoint = new Point(mPreviewResolution.x/2 - mROISize.x/2, mPreviewResolution.y/2 - mROISize.y/2);
-
-            return true;
-        }
+        mROISize = new Point( rectWidth, rectHeight);
+        mROIAnchorPoint = new Point(mPreviewResolution.x/2 - mROISize.x/2, mPreviewResolution.y/2 - mROISize.y/2);
     }
-
 }
