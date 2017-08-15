@@ -2,27 +2,21 @@ package pl.archeron.opencv_android_lpr.LPR;
 
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Matrix;
-import android.media.ExifInterface;
 import android.os.AsyncTask;
 import android.util.Log;
 
 import org.opencv.android.Utils;
+import org.opencv.core.Core;
 import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
-import org.opencv.core.Point;
-import org.opencv.core.Rect;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorParameters, String, String> {
+public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorParameters, String, Bitmap> {
     private static final String TAG = "LPRWorker";
 
     private LicensePlateProcessorCallback listener;
@@ -31,21 +25,39 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         this.listener = listener;
     }
 
-    protected String doInBackground(LicensePlateProcessorParameters... params) {
+    protected Bitmap doInBackground(LicensePlateProcessorParameters... params) {
         LicensePlateProcessorParameters param = params[0];
         Mat mImage = param.getMat();
 
+        Mat mBlurred = new Mat();
+        Imgproc.blur(mImage, mBlurred, new Size(3,3));
+
+        Mat mEdges = new Mat();
+        Imgproc.Canny(mBlurred, mEdges, 1, 3);
+/*
         Mat mGrayscale = new Mat();
         Imgproc.cvtColor(mImage, mGrayscale, Imgproc.COLOR_RGB2GRAY);
 
         Mat mEqualizedHistogram = new Mat();
         Imgproc.equalizeHist(mGrayscale, mEqualizedHistogram);
 
+        publishProgress("Extracting edges");
+        Mat mEdges = new Mat();
+        Mat mD = new Mat();
+        Mat mE = new Mat();
+        Mat straightLineHorizontal = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(1,5));
+        Mat straightLineVertical = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 1));
+        Imgproc.dilate(mEqualizedHistogram, mD, straightLineHorizontal);
+        Imgproc.erode(mEqualizedHistogram, mE, straightLineVertical);
+        Core.subtract(mD, mE, mEdges);
+*/
+
+
         Mat mPlateBinary = new Mat();
-        Imgproc.threshold(mEqualizedHistogram, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY);
+        Imgproc.threshold(mEdges, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 
         Mat mPlateBinaryClosed = new MatOfByte();
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5,5));
+        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3,3));
         Imgproc.morphologyEx(mPlateBinary, mPlateBinaryClosed, Imgproc.MORPH_CLOSE, kernel);
 
         //region Empty columns and rows removal
@@ -114,14 +126,17 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         }
         //endregion
 
-        return null;
+        Mat mat = mPlateBinaryClosed;
+        Bitmap bmp = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
+        Utils.matToBitmap(mat, bmp);
+        return bmp;
     }
 
     protected void onProgressUpdate(String... progress) {
         listener.onTaskUpdated(progress[0]);
     }
 
-    protected void onPostExecute(String result) {
+    protected void onPostExecute(Bitmap result) {
         listener.onTaskCompleted(result);
     }
 }

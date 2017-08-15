@@ -1,5 +1,6 @@
 package pl.archeron.opencv_android_lpr;
 
+import android.graphics.Bitmap;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -9,6 +10,7 @@ import android.view.SubMenu;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
@@ -53,6 +55,8 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
 
     private boolean imageCapture;
 
+    private ImageView imageView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -60,6 +64,8 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
 
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                 WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        imageView = (ImageView) findViewById(R.id.imageView);
 
         mPreviewResolution = null;
 
@@ -90,8 +96,10 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
     }
 
     @Override
-    public void onTaskCompleted(String result) {
+    public void onTaskCompleted(Bitmap result) {
         Toast.makeText(this, "LPR Done", Toast.LENGTH_SHORT).show();
+
+        imageView.setImageBitmap(result);
     }
 
     @Override
@@ -116,7 +124,7 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         Imgproc.rectangle(frame, mROIAnchorPoint, new Point(mROIAnchorPoint.x + mROISize.x, mROIAnchorPoint.y + mROISize.y), new Scalar(255, 0, 0), 1);
 
         if(imageCapture) {
-            Rect rect = new Rect(mROIAnchorPoint, new Point(mROISize.x, mROISize.y));
+            Rect rect = new Rect(mROIAnchorPoint, new Point(mROIAnchorPoint.x + mROISize.x, mROIAnchorPoint.y + mROISize.y));
             Mat licensePlate = new Mat(frame, rect);
 
             LicensePlateProcessorParameters lprParameters = new LicensePlateProcessorParameters(licensePlate);
