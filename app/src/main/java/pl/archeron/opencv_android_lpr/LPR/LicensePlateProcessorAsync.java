@@ -29,36 +29,14 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         LicensePlateProcessorParameters param = params[0];
         Mat mImage = param.getMat();
 
-        Mat mBlurred = new Mat();
-        Imgproc.blur(mImage, mBlurred, new Size(3,3));
-
-        Mat mEdges = new Mat();
-        Imgproc.Canny(mBlurred, mEdges, 1, 3);
-/*
         Mat mGrayscale = new Mat();
         Imgproc.cvtColor(mImage, mGrayscale, Imgproc.COLOR_RGB2GRAY);
 
         Mat mEqualizedHistogram = new Mat();
         Imgproc.equalizeHist(mGrayscale, mEqualizedHistogram);
 
-        publishProgress("Extracting edges");
-        Mat mEdges = new Mat();
-        Mat mD = new Mat();
-        Mat mE = new Mat();
-        Mat straightLineHorizontal = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(1,5));
-        Mat straightLineVertical = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(5, 1));
-        Imgproc.dilate(mEqualizedHistogram, mD, straightLineHorizontal);
-        Imgproc.erode(mEqualizedHistogram, mE, straightLineVertical);
-        Core.subtract(mD, mE, mEdges);
-*/
-
-
         Mat mPlateBinary = new Mat();
-        Imgproc.threshold(mEdges, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
-
-        Mat mPlateBinaryClosed = new MatOfByte();
-        Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_RECT, new Size(3,3));
-        Imgproc.morphologyEx(mPlateBinary, mPlateBinaryClosed, Imgproc.MORPH_CLOSE, kernel);
+        Imgproc.threshold(mEqualizedHistogram, mPlateBinary, 0, 255, Imgproc.THRESH_BINARY | Imgproc.THRESH_OTSU);
 
         //region Empty columns and rows removal
         publishProgress("Empty rows and columns removal");
@@ -69,7 +47,7 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         float emptyColumnThreshold = 0.90f;
 
         byte plateBinary[] = new byte[mPlateBinary.width() * mPlateBinary.height()];
-        mPlateBinaryClosed.get(0,0,plateBinary);
+        mPlateBinary.get(0,0,plateBinary);
 
         int plateBinaryWidth = mPlateBinary.width();
         int plateBinaryHeight = mPlateBinary.height();
@@ -126,7 +104,7 @@ public class LicensePlateProcessorAsync extends AsyncTask<LicensePlateProcessorP
         }
         //endregion
 
-        Mat mat = mPlateBinaryClosed;
+        Mat mat = mPlateBinaryWithoutZeros2;
         Bitmap bmp = Bitmap.createBitmap(mat.cols(), mat.rows(), Bitmap.Config.ARGB_8888);
         Utils.matToBitmap(mat, bmp);
         return bmp;

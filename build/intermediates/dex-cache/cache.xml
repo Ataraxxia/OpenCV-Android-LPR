@@ -102,6 +102,15 @@
     </item>
     <item
         is-multidex="false"
+        jar="/home/tai/.android/build-cache/ed51232547544f398eafb345a8cf9c15f59ed2e0/output/jars/classes.jar"
+        jumboMode="false"
+        optimize="true"
+        revision="26.0.0"
+        sha1="921b1c4306b10e7de53574523eb7f7144bd0707f">
+        <dex dex="/home/tai/StudioProjects/OpenCV-Android-LPR/app/build/intermediates/pre-dexed/debug/classes_e00a28642fbe211f8c6604823721f3b177ea3676.jar" />
+    </item>
+    <item
+        is-multidex="false"
         jar="/home/tai/.android/build-cache/b3f11b1d897ebfbd7fed361ca721343f966138ce/output/jars/classes.jar"
         jumboMode="false"
         optimize="true"

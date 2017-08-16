@@ -112,6 +112,9 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         mROIAnchorPoint = new Point(width/2 - mROISize.x/2, height/2 - mROISize.y/2);
 
         mPreviewResolution = new Point(width, height);
+
+        changeFocusMode("auto");
+        changePreviewResolution(mOpenCvCameraView.getResolutionList().get(0));
     }
 
     @Override
@@ -163,7 +166,6 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
             String element = focusItr.next();
             mFocusModeMenuItems[idx] = mFocusModeMenu.add(2, idx, Menu.NONE, element);
             idx++;
-
         }
 
         return true;
@@ -180,20 +182,27 @@ public class PhotoRoiActivity extends AppCompatActivity implements CvCameraViewL
         {
             int id = item.getItemId();
             android.hardware.Camera.Size resolution = mResolutionList.get(id);
-            mOpenCvCameraView.setResolution(resolution);
-            resolution = mOpenCvCameraView.getResolution();
-            mROIAnchorPoint = new Point(resolution.width/2 - mROISize.x/2, resolution.height/2 - mROISize.y/2);
-            mPreviewResolution = new Point(resolution.width, resolution.height);
+            changePreviewResolution(resolution);
             String caption = Integer.valueOf(resolution.width).toString() + "x" + Integer.valueOf(resolution.height).toString();
             Toast.makeText(this, caption, Toast.LENGTH_SHORT).show();
         } else if(item.getGroupId() == 2) {
             int id = item.getItemId();
             String focusMode = mFocusModeList.get(id);
-            mOpenCvCameraView.setFocusMode(focusMode);
-
+            changeFocusMode(focusMode);
             Toast.makeText(this, focusMode, Toast.LENGTH_SHORT).show();
         }
         return true;
+    }
+
+    private void changeFocusMode(String focusMode) {
+        mOpenCvCameraView.setFocusMode(focusMode);
+    }
+
+    private void changePreviewResolution(android.hardware.Camera.Size resolution) {
+        mOpenCvCameraView.setResolution(resolution);
+        resolution = mOpenCvCameraView.getResolution();
+        mROIAnchorPoint = new Point(resolution.width/2 - mROISize.x/2, resolution.height/2 - mROISize.y/2);
+        mPreviewResolution = new Point(resolution.width, resolution.height);
     }
 
     public void onWorkButton(View v) {
